@@ -1,58 +1,43 @@
 import socket
 import threading
 import os
-from tkinter import *
 
-# إعدادات ريلواي
-PORT = int(os.environ.get("PORT", 55555))
+# إعدادات ريلواي (البورت والدخول)
+PORT = int(os.environ.get("PORT", 8080))
 HOST = '0.0.0.0'
 
-def receive_messages():
-    global conn
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.bind((HOST, PORT))
+server.listen(5)
+
+clients = []
+
+def broadcast(message, _conn):
+    for client in clients:
+        if client != _conn:
+            try:
+                client.send(message)
+            except:
+                client.close()
+                if client in clients: clients.remove(client)
+
+def handle_client(conn, addr):
+    print(f"[NEW CONNECTION] {addr} connected.")
+    clients.append(conn)
     while True:
         try:
-            data = conn.recv(1024)
-            if not data:
-                break
-            chat_box.insert(END, f"Client: {data.decode()}\n")
-            chat_box.yview(END)
+            message = conn.recv(1024)
+            if not message: break
+            # السيرفر بياخد الرسالة يوزعها لكل الناس المتصلة
+            broadcast(message, conn)
         except:
             break
+    conn.close()
+    if conn in clients: clients.remove(conn)
+    print(f"[DISCONNECTED] {addr} left.")
 
-def send_message():
-    message = msg_entry.get()
-    if message and conn:
-        try:
-            chat_box.insert(END, f"You: {message}\n")
-            conn.sendall(message.encode())
-            msg_entry.delete(0, END)
-            chat_box.yview(END)
-        except:
-            chat_box.insert(END, "Error: Connection lost.\n")
-
-def start_server():
-    global conn
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind((HOST, PORT))
-    server_socket.listen(1)
-    chat_box.insert(END, f"Server started on port {PORT}...\nWaiting for client...\n")
-    
-    conn, addr = server_socket.accept()
-    chat_box.insert(END, f"Connected by {addr}\n")
-    # بعد ما العميل يتصل، نبدأ خيط الاستقبال
-    threading.Thread(target=receive_messages, daemon=True).start()
-
-# إعداد الواجهة
-root = Tk()
-root.title("WhatsApp Server Style")
-chat_box = Text(root, height=20, width=50)
-chat_box.pack(padx=10, pady=10)
-msg_entry = Entry(root, width=40)
-msg_entry.pack(side=LEFT, padx=10)
-Button(root, text="Send", command=send_message, bg="#25D366", fg="white").pack(side=RIGHT, padx=10)
-
-conn = None
-# تشغيل السيرفر في Thread عشان الـ UI ما يتجمدش
-threading.Thread(target=start_server, daemon=True).start()
-
-root.mainloop()
+print(f"Server is running on port {PORT}...")
+while True:
+    conn, addr = server.accept()
+    thread = threading.Thread(target=handle_client, args=(conn, addr))
+    thread.start()
