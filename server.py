@@ -28,7 +28,7 @@ def handle_client(conn, addr):
         try:
             message = conn.recv(1024)
             if not message: break
-            print(f"Message received:{message.decode()}")
+            
             broadcast(message, conn)
         except:
             break
