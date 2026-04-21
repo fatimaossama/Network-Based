@@ -2,7 +2,7 @@ import socket
 import threading
 import os
 
-# إعدادات ريلواي (البورت والدخول)
+
 PORT = int(os.environ.get("PORT", 8080))
 HOST = '0.0.0.0'
 
@@ -28,7 +28,7 @@ def handle_client(conn, addr):
         try:
             message = conn.recv(1024)
             if not message: break
-            # السيرفر بياخد الرسالة يوزعها لكل الناس المتصلة
+            
             broadcast(message, conn)
         except:
             break
